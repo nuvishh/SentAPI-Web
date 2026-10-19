@@ -1,7 +1,7 @@
 import pickle
 import nltk
 from nltk.tokenize import word_tokenize
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 import os
 from datetime import datetime
 import logging
@@ -61,6 +61,18 @@ def preprocess_text(text):
     filtered_tokens = [token for token in tokens if token not in mal_stop_words]
     return {token: True for token in filtered_tokens}
 
+
+def classify_text(text):
+    """Run the model on text. Returns (prediction, confidence) or raises."""
+    if not model:
+        raise RuntimeError("Model is not loaded")
+    features = preprocess_text(text)
+    prediction = model.classify(features)
+    prob_dist = model.prob_classify(features)
+    confidence = round(prob_dist.prob(prediction) * 100, 2)
+    return prediction, confidence
+
+
 @app.route('/')
 def home():
     """Render the main page with initialized variables"""
@@ -89,7 +101,9 @@ def analyze():
         logger.info(f"Processing text: {text[:50]}...")
 
         # Preprocess and classify
-        if not model:
+        try:
+            prediction, confidence = classify_text(text)
+        except RuntimeError:
             logger.error("Model is not loaded")
             return render_template(
                 'index.html',
@@ -98,13 +112,6 @@ def analyze():
                 prediction=None,
                 confidence=None
             )
-
-        features = preprocess_text(text)
-        prediction = model.classify(features)
-
-        # Calculate confidence
-        prob_dist = model.prob_classify(features)
-        confidence = round(prob_dist.prob(prediction) * 100, 2)
 
         logger.info(f"Result: {prediction} ({confidence}% confidence)")
 
@@ -125,6 +132,30 @@ def analyze():
             prediction=None,
             confidence=None
         )
+
+@app.route('/api/analyze', methods=['POST'])
+def api_analyze():
+    """JSON API: POST {"text": "..."} -> {"prediction", "confidence"}"""
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({"error": "Missing 'text' in JSON body"}), 400
+    try:
+        logger.info(f"API request: {text[:50]}...")
+        prediction, confidence = classify_text(text)
+        logger.info(f"API result: {prediction} ({confidence}%)")
+        return jsonify({
+            "text": text,
+            "prediction": prediction,
+            "confidence": confidence
+        })
+    except RuntimeError as e:
+        logger.error(f"API error: {e}")
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        logger.error(f"API error: {e}", exc_info=True)
+        return jsonify({"error": "Analysis failed"}), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
