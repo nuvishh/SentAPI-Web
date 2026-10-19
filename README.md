@@ -97,7 +97,7 @@ The app expects `model4.pkl`–`model8.pkl` at the repo root (`model8.pkl` is lo
 ## Team
 
 - **Vishnu N** — [@nuvishh](https://github.com/nuvishh)
-- **Sreerag E**
+- **Sreerag E** — [@cheer-g](https://github.com/cheer-g)
 - **Firdousa K**
 
 ## License
