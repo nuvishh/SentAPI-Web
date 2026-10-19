@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentAPI - Malayalam Sentiment Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #4bb543;
+            --danger: #ef233c;
+            --warning: #fca311;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .app-container {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            flex: 1;
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 1.5rem;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        button:hover {
+            background: #3a56d4;
+            transform: translateY(-2px);
+        }
+        
+        .result {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+            margin-bottom: 1.5rem;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .sentiment-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .positive { color: var(--success); }
+        .negative { color: var(--danger); }
+        .neutral { color: var(--warning); }
+        
+        .meter {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .level {
+            height: 100%;
+            border-radius: 5px;
+        }
+        
+        .error {
+            color: var(--danger);
+            margin-bottom: 1rem;
+            text-align: center;
+            padding: 0.5rem;
+            background-color: rgba(239, 35, 60, 0.1);
+            border-radius: 5px;
+        }
+        
+        .examples {
+            margin-top: 1rem;
+        }
+        
+        .example-chip {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            margin: 0.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .example-chip:hover {
+            background: #dee2e6;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-language"></i> SentAPI</h1>
+            <p>Malayalam Sentiment Analysis Tool</p>
+        </header>
+        
+        <div class="app-container">
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-edit"></i> Enter Text</h2>
+                
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
+                
+                <form method="POST" action="/analyze">
+                    <textarea name="message" placeholder="Enter Malayalam text to analyze (e.g., മോശം സിനിമ)..." required>{{ val }}</textarea>
+                    <button type="submit"><i class="fas fa-search"></i> Analyze Sentiment</button>
+                </form>
+                
+                <div class="examples">
+                    <p>Try these examples:</p>
+                    <div class="example-chip" onclick="document.querySelector('textarea').value='ഈ സിനിമ വളരെ നന്നായിരുന്നു'">Positive</div>
+                    <div class="example-chip" onclick="document.querySelector('textarea').value='ഞാൻ നിരാശനാണ്'">Negative</div>
+                    <div class="example-chip" onclick="document.querySelector('textarea').value='അവർ പോയി'">Neutral</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-chart-bar"></i> Result</h2>
+                
+                <div class="result">
+                    {% if prediction %}
+                        <div class="sentiment-icon animate">
+                            {% if prediction == 'positive' %}
+                                <i class="fas fa-smile-beam positive"></i>
+                            {% elif prediction == 'negative' %}
+                                <i class="fas fa-frown negative"></i>
+                            {% else %}
+                                <i class="fas fa-meh neutral"></i>
+                            {% endif %}
+                        </div>
+                        
+                        <h3 class="{{ prediction }} animate">
+                            {% if prediction == 'positive' %}Positive
+                            {% elif prediction == 'negative' %}Negative
+                            {% else %}Neutral
+                            {% endif %} Sentiment
+                        </h3>
+                        
+                        {% if confidence %}
+                            <div class="meter animate">
+                                <div class="level" style="width: {{ confidence }}%; 
+                                    background: {% if prediction == 'positive' %}var(--success){% elif prediction == 'negative' %}var(--danger){% else %}var(--warning){% endif %}">
+                                </div>
+                            </div>
+                            <p class="animate">Confidence: {{ confidence }}%</p>
+                        {% endif %}
+                    {% else %}
+                        <div class="sentiment-icon">
+                            <i class="fas fa-comment-dots" style="color: var(--gray);"></i>
+                        </div>
+                        <h3>Enter text to analyze</h3>
+                        <p>Results will appear here</p>
+                    {% endif %}
+                </div>
+                
+                 <div>
+                    <h3 class="card-title"><i class="fas fa-info-circle"></i> About</h3>
+                    <p>This tool analyzes Malayalam text to determine sentiment (positive, negative, or neutral) using machine learning.</p>
+                    <p>Contact: <a href="mailto:teamsentapi@gmail.com">teamsentapi@gmail.com</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; 2025 SentAPI. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
