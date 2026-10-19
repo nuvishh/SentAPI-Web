@@ -9,6 +9,9 @@ try:
 except ImportError:
     HAS_TRANSLITERATION = False
 import os
+import json as _json
+import urllib.request
+import urllib.parse
 from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
@@ -67,6 +70,22 @@ def preprocess_text(text):
     filtered_tokens = [token for token in tokens if token not in mal_stop_words]
     return {token: True for token in filtered_tokens}
 
+
+
+
+def google_transliterate(text):
+    """Use Google Input Tools (free, no key) for smart Manglish->Malayalam."""
+    url = ("https://inputtools.google.com/request?itc=ml-t-i0-und&num=5&cp=0&cs=1"
+           "&ie=utf-8&oe=utf-8&app=test&text=" + urllib.parse.quote(text))
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = _json.loads(resp.read().decode("utf-8"))
+    # data: ["SUCCESS", [[input, [suggestions...]]]]
+    if data and data[0] == "SUCCESS" and data[1]:
+        suggestions = data[1][0][1]
+        if suggestions:
+            return suggestions[0]
+    raise ValueError("No transliteration result")
 
 def classify_text(text):
     """Run the model on text. Returns (prediction, confidence) or raises."""
@@ -193,9 +212,18 @@ def api_transliterate():
     text = (data.get('text') or '').strip()
     if not text:
         return jsonify({"error": "Missing 'text' in JSON body"}), 400
+    # Try Google Input Tools first (smarter for casual Manglish)
+    try:
+        out = google_transliterate(text)
+        return jsonify({"text": text, "transliterated": out, "engine": "google"})
+    except Exception as e:
+        logger.warning(f"Google transliteration failed, trying fallback: {e}")
+    # Fallback: indic-transliteration (offline)
+    if not HAS_TRANSLITERATION:
+        return jsonify({"error": "Transliteration not available"}), 503
     try:
         out = transliterate(text, sanscript.ITRANS, sanscript.MALAYALAM)
-        return jsonify({"text": text, "transliterated": out})
+        return jsonify({"text": text, "transliterated": out, "engine": "indic"})
     except Exception as e:
         logger.error(f"Transliteration error: {e}")
         return jsonify({"error": "Transliteration failed"}), 500
