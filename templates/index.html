@@ -229,6 +229,33 @@
             margin: 0.4rem 0 1rem; white-space: pre; color: var(--dark);
         }
 
+
+        .manglish-row { display: flex; gap: 0.5rem; margin: -0.5rem 0 1rem; }
+        .mini-btn {
+            background: transparent; color: var(--primary); border: 1.5px solid var(--primary);
+            padding: 0.4rem 0.9rem; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+            width: auto; display: inline-flex; align-items: center; gap: 0.3rem;
+        }
+        .mini-btn:hover { background: var(--primary); color: white; transform: none; }
+        body.dark .mini-btn { color: #93c5fd; border-color: #93c5fd; }
+        .batch-card { margin-top: 2rem; }
+        #batchInput { min-height: 120px; }
+        .batch-results { margin-top: 1rem; }
+        .batch-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.7rem 1rem; border-radius: 8px; background: #f8f9fa;
+            margin-bottom: 0.5rem; font-size: 0.9rem; gap: 0.5rem;
+        }
+        body.dark .batch-item { background: #0f172a; }
+        .batch-item .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .batch-badge {
+            padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.75rem;
+            font-weight: 600; color: white; white-space: nowrap;
+        }
+        .batch-badge.positive { background: var(--success); }
+        .batch-badge.negative { background: var(--danger); }
+        .batch-badge.neutral { background: var(--warning); }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -258,6 +285,9 @@
                 <form method="POST" action="/analyze">
                     <textarea name="message" id="msgInput" placeholder="Enter Malayalam text to analyze (e.g., മോശം സിനിമ)..." required maxlength="2000">{{ val }}</textarea>
                     <div class="char-count"><span id="charCount">0</span>/2000</div>
+                    <div class="manglish-row">
+                        <button type="button" class="mini-btn" id="manglishBtn" onclick="toMalayalam()"><i class="fas fa-exchange-alt"></i> Manglish → മലയാളം</button>
+                    </div>
                     <button type="submit"><i class="fas fa-search"></i> Analyze Sentiment</button>
                 </form>
                 
@@ -326,6 +356,17 @@ Content-Type: application/json
 {"text": "ഈ സിനിമ വളരെ നന്നായിരുന്നു"}</code>
             <p>Response:</p>
             <code>{"prediction": "positive", "confidence": 92.5, "text": "..."}</code>
+            <p style="margin-top:0.8rem">Batch: <code style="display:inline;padding:0.2rem 0.5rem">POST /api/batch</code> with <code style="display:inline;padding:0.2rem 0.5rem">{"texts": ["...", "..."]}</code> (max 20)</p>
+        </div>
+
+        <div class="card batch-card">
+            <h2 class="card-title"><i class="fas fa-layer-group"></i> Batch Analysis</h2>
+            <p style="color:var(--gray);font-size:0.9rem;margin-bottom:1rem">One text per line (max 20), then analyze all at once.</p>
+            <textarea id="batchInput" placeholder="ഈ സിനിമ നന്നായിരുന്നു
+ഞാൻ നിരാശനാണ്
+അവർ പോയി"></textarea>
+            <button type="button" id="batchBtn" onclick="runBatch()"><i class="fas fa-bolt"></i> Analyze all</button>
+            <div class="batch-results" id="batchResults"></div>
         </div>
         <footer>
             <p>&copy; 2025 SentAPI. All rights reserved.</p>
@@ -358,6 +399,52 @@ Content-Type: application/json
                 btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
                 setTimeout(() => btn.innerHTML = orig, 1500);
             });
+        }
+
+        async function toMalayalam() {
+            const btn = document.getElementById('manglishBtn');
+            const text = msgInput.value.trim();
+            if (!text) return;
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting...';
+            try {
+                const r = await fetch('/api/transliterate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text})
+                });
+                const d = await r.json();
+                if (d.transliterated) { msgInput.value = d.transliterated; updateCount(); }
+            } catch(e) {}
+            btn.innerHTML = orig;
+            btn.disabled = false;
+        }
+
+        async function runBatch() {
+            const btn = document.getElementById('batchBtn');
+            const box = document.getElementById('batchResults');
+            const texts = document.getElementById('batchInput').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20);
+            if (!texts.length) return;
+            btn.disabled = true;
+            box.innerHTML = '<p style="text-align:center;color:var(--gray)">Analyzing...</p>';
+            try {
+                const r = await fetch('/api/batch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({texts})
+                });
+                const d = await r.json();
+                box.innerHTML = (d.results || []).map(it => {
+                    const badge = it.error ? '<span class="batch-badge" style="background:var(--gray)">error</span>'
+                        : '<span class="batch-badge ' + it.prediction + '">' + it.prediction + ' ' + it.confidence + '%</span>';
+                    const safe = it.text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+                    return '<div class="batch-item"><span class="txt">' + safe + '</span>' + badge + '</div>';
+                }).join('') || '<p>No results</p>';
+            } catch(e) {
+                box.innerHTML = '<p style="color:var(--danger)">Failed. Try again.</p>';
+            }
+            btn.disabled = false;
         }
     </script>
 </body>

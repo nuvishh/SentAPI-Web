@@ -2,6 +2,12 @@ import pickle
 import nltk
 from nltk.tokenize import word_tokenize
 from flask import Flask, request, render_template, jsonify
+try:
+    from indic_transliteration import sanscript
+    from indic_transliteration.sanscript import transliterate
+    HAS_TRANSLITERATION = True
+except ImportError:
+    HAS_TRANSLITERATION = False
 import os
 from datetime import datetime
 import logging
@@ -155,6 +161,44 @@ def api_analyze():
     except Exception as e:
         logger.error(f"API error: {e}", exc_info=True)
         return jsonify({"error": "Analysis failed"}), 500
+
+
+@app.route('/api/batch', methods=['POST'])
+def api_batch():
+    """JSON API: POST {"texts": ["...", "..."]} -> {"results": [...]} (max 20)"""
+    data = request.get_json(silent=True) or {}
+    texts = data.get('texts')
+    if not isinstance(texts, list) or not texts:
+        return jsonify({"error": "Provide 'texts' as a non-empty JSON array"}), 400
+    texts = [str(t).strip() for t in texts[:20] if str(t).strip()]
+    if not texts:
+        return jsonify({"error": "No valid texts provided"}), 400
+    results = []
+    for text in texts:
+        try:
+            prediction, confidence = classify_text(text)
+            results.append({"text": text, "prediction": prediction, "confidence": confidence})
+        except Exception as e:
+            logger.error(f"Batch item error: {e}")
+            results.append({"text": text, "error": "Analysis failed"})
+    return jsonify({"results": results, "count": len(results)})
+
+
+@app.route('/api/transliterate', methods=['POST'])
+def api_transliterate():
+    """Manglish -> Malayalam: POST {"text": "ithu nalla padam"} -> {"transliterated": "..."}"""
+    if not HAS_TRANSLITERATION:
+        return jsonify({"error": "Transliteration not available"}), 503
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({"error": "Missing 'text' in JSON body"}), 400
+    try:
+        out = transliterate(text, sanscript.ITRANS, sanscript.MALAYALAM)
+        return jsonify({"text": text, "transliterated": out})
+    except Exception as e:
+        logger.error(f"Transliteration error: {e}")
+        return jsonify({"error": "Transliteration failed"}), 500
 
 
 if __name__ == '__main__':
