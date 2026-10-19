@@ -206,8 +206,6 @@ def api_batch():
 @app.route('/api/transliterate', methods=['POST'])
 def api_transliterate():
     """Manglish -> Malayalam: POST {"text": "ithu nalla padam"} -> {"transliterated": "..."}"""
-    if not HAS_TRANSLITERATION:
-        return jsonify({"error": "Transliteration not available"}), 503
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
     if not text:
