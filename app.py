@@ -103,7 +103,7 @@ def home():
     """Render the main page with initialized variables"""
     return render_template(
         "index.html",
-        val='അവർ പോയി',
+        val='ഇത് നല്ല പടം ആണ്',
         prediction=None,
         confidence=None,
         error=None
