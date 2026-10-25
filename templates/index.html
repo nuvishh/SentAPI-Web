@@ -272,6 +272,7 @@
         <header>
             <h1><i class="fas fa-language"></i> SentAPI</h1>
             <p>Malayalam Sentiment Analysis Tool</p>
+            <button type="button" class="copy-btn" onclick="shareTool(this)" aria-label="Share this tool">↗ Share this tool</button>
         </header>
         
         <div class="app-container">
@@ -446,6 +447,22 @@ Content-Type: application/json
                 box.innerHTML = '<p style="color:var(--danger)">Failed. Try again.</p>';
             }
             btn.disabled = false;
+        }
+    <script>
+        async function shareTool(btn){
+            var url = location.href, title = document.title;
+            var done = function(msg){ if(!btn) return; var old = btn.textContent; btn.textContent = msg; setTimeout(function(){ btn.textContent = old; }, 1600); };
+            if (navigator.share) {
+                try { await navigator.share({title: title, url: url}); return; }
+                catch (e) { if (e && e.name === 'AbortError') return; }
+            }
+            try { await navigator.clipboard.writeText(url); done('Copied ✓'); return; }
+            catch (e) {}
+            var ta = document.createElement('textarea');
+            ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); done('Copied ✓'); } catch (e) {}
+            ta.remove();
         }
     </script>
 </body>
